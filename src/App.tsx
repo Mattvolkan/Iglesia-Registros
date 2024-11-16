@@ -5,7 +5,8 @@ import LoginForm from './components/LoginForm';
 import AttendanceForm from './components/AttendanceForm';
 import VisitorForm from './components/VisitorForm';
 import RecordsList from './components/RecordsList';
-import { LogOut, ClipboardList, Users, FileText } from 'lucide-react';
+import ServerNameModal from './components/ServerNameModal';
+import { LogOut, ClipboardList, Users, FileText, Trash2 } from 'lucide-react';
 import { useSupabase } from './hooks/useSupabase';
 import { Toaster } from 'react-hot-toast';
 
@@ -13,21 +14,32 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'attendance' | 'visitors' | 'records'>('attendance');
-  const { records, visitors, loading, addAttendanceRecord, addVisitor } = useSupabase();
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverName, setServerName] = useState<string>('');
+  const { records, visitors, loading, addAttendanceRecord, addVisitor, deleteAllRecords } = useSupabase();
 
   const handleLogin = (username: string, password: string) => {
     const validUser = validateUser(username, password);
     if (validUser) {
       setUser(validUser);
       setError('');
+      if (validUser.role === 'servidor') {
+        setShowServerModal(true);
+      }
     } else {
       setError('Usuario o contraseña incorrectos');
     }
   };
 
+  const handleServerNameSubmit = (name: string) => {
+    setServerName(name);
+    setShowServerModal(false);
+  };
+
   const handleLogout = () => {
     setUser(null);
     setError('');
+    setServerName('');
   };
 
   const handleAttendanceSubmit = async (record: AttendanceRecord) => {
@@ -46,6 +58,16 @@ function App() {
     }
   };
 
+  const handleDeleteAllRecords = async () => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar todos los registros? Esta acción no se puede deshacer.')) {
+      try {
+        await deleteAllRecords();
+      } catch (error) {
+        console.error('Error al eliminar registros:', error);
+      }
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-100">
@@ -58,6 +80,9 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Toaster position="top-right" />
+      {showServerModal && (
+        <ServerNameModal onSubmit={handleServerNameSubmit} username={user.username} />
+      )}
       <nav className="bg-white shadow-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -68,7 +93,7 @@ function App() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-600 hidden md:inline">
-                Bienvenido, {user.username} ({user.role})
+                Bienvenido, {serverName || user.username} ({user.role})
               </span>
               <button
                 onClick={handleLogout}
@@ -117,6 +142,16 @@ function App() {
             <FileText className="mr-2" size={20} />
             Ver Registros
           </button>
+
+          {user.role === 'pastor' && (
+            <button
+              onClick={handleDeleteAllRecords}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 ml-auto"
+            >
+              <Trash2 className="mr-2" size={20} />
+              Eliminar Registros
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -126,10 +161,10 @@ function App() {
         ) : (
           <>
             {activeTab === 'attendance' && (
-              <AttendanceForm onSubmit={handleAttendanceSubmit} username={user.username} />
+              <AttendanceForm onSubmit={handleAttendanceSubmit} username={serverName || user.username} />
             )}
             {activeTab === 'visitors' && (
-              <VisitorForm onSubmit={handleVisitorSubmit} username={user.username} />
+              <VisitorForm onSubmit={handleVisitorSubmit} username={serverName || user.username} />
             )}
             {activeTab === 'records' && (
               <RecordsList records={records} visitors={visitors} user={user} />

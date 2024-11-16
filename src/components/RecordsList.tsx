@@ -101,32 +101,91 @@ export default function RecordsList({ records, visitors, user }: RecordsListProp
 
   const exportToExcel = () => {
     let data;
+    let totals = {
+      damas: 0,
+      caballeros: 0,
+      ninos: 0,
+      jovenes: 0,
+      ancianos: 0,
+      visitantes: 0
+    };
+  
     if (activeTab === 'attendance') {
-      data = filteredRecords.map(record => ({
-        Fecha: formatDate(record.date),
-        Servicio: record.tipoServicio === 'Otro' ? record.otroServicio : record.tipoServicio,
-        Damas: record.damas,
-        Caballeros: record.caballeros,
-        Niños: record.ninos,
-        Jóvenes: record.jovenes,
-        Ancianos: record.ancianos,
-        Visitantes: record.visitantes,
-        'Registrado Por': record.registradoPor
-      }));
+      // Calculate totals
+      filteredRecords.forEach(record => {
+        totals.damas += record.damas;
+        totals.caballeros += record.caballeros;
+        totals.ninos += record.ninos;
+        totals.jovenes += record.jovenes;
+        totals.ancianos += record.ancianos;
+        totals.visitantes += record.visitantes;
+      });
+  
+      data = [
+        // Headers
+        ['Fecha', 'Servicio', 'Damas', 'Caballeros', 'Niños', 'Jóvenes', 'Ancianos', 'Visitantes', 'Registrado Por'],
+        // Data rows
+        ...filteredRecords.map(record => [
+          formatDate(record.date),
+          record.tipoServicio === 'Otro' ? record.otroServicio : record.tipoServicio,
+          record.damas,
+          record.caballeros,
+          record.ninos,
+          record.jovenes,
+          record.ancianos,
+          record.visitantes,
+          record.registradoPor
+        ]),
+        // Empty row
+        [],
+        // Totals
+        ['TOTALES', '', totals.damas, totals.caballeros, totals.ninos, totals.jovenes, totals.ancianos, totals.visitantes, '']
+      ];
     } else {
-      data = filteredVisitors.map(visitor => ({
-        Fecha: formatDate(visitor.fechaRegistro),
-        Servicio: visitor.tipoServicio === 'Otro' ? visitor.otroServicio : visitor.tipoServicio,
-        Nombre: visitor.nombreCompleto,
-        Teléfono: visitor.telefono,
-        Dirección: visitor.direccion,
-        Email: visitor.email || '-',
-        'Registrado Por': visitor.registradoPor
-      }));
+      data = [
+        // Headers
+        ['Fecha', 'Servicio', 'Nombre', 'Teléfono', 'Dirección', 'Email', 'Registrado Por'],
+        // Data rows
+        ...filteredVisitors.map(visitor => [
+          formatDate(visitor.fechaRegistro),
+          visitor.tipoServicio === 'Otro' ? visitor.otroServicio : visitor.tipoServicio,
+          visitor.nombreCompleto,
+          visitor.telefono,
+          visitor.direccion,
+          visitor.email || '-',
+          visitor.registradoPor
+        ])
+      ];
     }
-
-    const ws = XLSX.utils.json_to_sheet(data);
+  
+    // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+  
+    // Set column widths
+    const colWidths = activeTab === 'attendance' 
+      ? [20, 30, 10, 10, 10, 10, 10, 10, 20]
+      : [20, 30, 30, 15, 40, 30, 20];
+    
+    ws['!cols'] = colWidths.map(width => ({ width }));
+  
+    // Add autofilter
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    ws['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}1` };
+  
+    // Style the totals row if it's attendance data
+    if (activeTab === 'attendance') {
+      const lastRow = data.length;
+      const totalsRow = lastRow - 1;
+      
+      // Bold font for totals row
+      for (let col = 0; col <= range.e.c; col++) {
+        const cellRef = XLSX.utils.encode_cell({ r: totalsRow, c: col });
+        if (!ws[cellRef]) ws[cellRef] = {};
+        ws[cellRef].s = { font: { bold: true } };
+      }
+    }
+  
     XLSX.utils.book_append_sheet(wb, ws, activeTab === 'attendance' ? 'Asistencia' : 'Visitantes');
     XLSX.writeFile(wb, `registros-${activeTab}-${new Date().toISOString().split('T')[0]}.xlsx`);
   };

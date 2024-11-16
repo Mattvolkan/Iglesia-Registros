@@ -93,7 +93,7 @@ function App() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-600 hidden md:inline">
-                Bienvenido, {serverName || user.username} ({user.role})
+                Bienvenido, {serverName || user.username}
               </span>
               <button
                 onClick={handleLogout}

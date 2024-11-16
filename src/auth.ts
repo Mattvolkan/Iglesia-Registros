@@ -1,8 +1,8 @@
 import { User } from './types';
 
 export const users: User[] = [
-  { username: 'servidor1', password: 'servidor123', role: 'servidor' },
-  { username: 'pastor1', password: 'pastor123', role: 'pastor' },
+  { username: 'servidor', password: 'servidor123', role: 'servidor' },
+  { username: 'pastor', password: 'pastor123', role: 'pastor' },
 ];
 
 export const validateUser = (username: string, password: string): User | null => {

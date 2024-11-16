@@ -119,11 +119,31 @@ export function useSupabase() {
     }
   };
 
+  const deleteAllRecords = async () => {
+    try {
+      const [{ error: attendanceError }, { error: visitorsError }] = await Promise.all([
+        supabase.from('attendance_records').delete().neq('id', '0'),
+        supabase.from('visitors').delete().neq('id', '0')
+      ]);
+
+      if (attendanceError) throw attendanceError;
+      if (visitorsError) throw visitorsError;
+
+      toast.success('Todos los registros han sido eliminados');
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting records:', error);
+      toast.error('Error al eliminar los registros');
+      throw error;
+    }
+  };
+
   return {
     records,
     visitors,
     loading,
     addAttendanceRecord,
-    addVisitor
+    addVisitor,
+    deleteAllRecords
   };
 }
